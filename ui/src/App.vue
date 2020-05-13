@@ -5,7 +5,7 @@
     </div>
 
     <transition name="loading-fade">
-      <div class="c-app--loading" v-if="showLoading" :class="appLoadingClasses">
+      <div class="c-app--loading" v-if="shouldShowLoading" :class="appLoadingClasses">
         <div class="c-app--loading-container">
           <div class="c-app--loading-progress">
             <div class="c-app--loading-progress-bar" :style="loadingProgressBarStyle"></div>
@@ -36,7 +36,8 @@
                 class="c-app--logo-line"/>
             </svg>
           </div>
-          <monitoror-errors class="c-app--loading-errors"></monitoror-errors>
+          <monitoror-welcome v-if="shouldShowWelcomePage"></monitoror-welcome>
+          <monitoror-errors v-else class="c-app--loading-errors"></monitoror-errors>
         </div>
       </div>
     </transition>
@@ -48,6 +49,7 @@
 
   import MonitororErrors from '@/components/Errors.vue'
   import MonitororTile from '@/components/Tile.vue'
+  import MonitororWelcome from '@/components/Welcome.vue'
   import hasConfigVerifyErrors from '@/helpers/hasConfigVerifyErrors'
   import ConfigError from '@/interfaces/configError'
   import TileConfig from '@/interfaces/tileConfig'
@@ -56,6 +58,7 @@
     components: {
       MonitororErrors,
       MonitororTile,
+      MonitororWelcome,
     },
   })
   export default class App extends Vue {
@@ -78,7 +81,8 @@
         ['c-app__theme-' + this.theme]: true,
         'c-app__show-cursor': this.hasConfigVerifyErrors || this.showCursor,
         'c-app__no-scroll': !this.hasConfigVerifyErrors,
-        'c-app__config-verify-errors': this.hasConfigVerifyErrors,
+        'c-app__config-verify-errors': !this.shouldShowWelcomePage && this.hasConfigVerifyErrors,
+        'c-app__welcome-page': this.shouldShowWelcomePage,
       }
     }
 
@@ -96,9 +100,10 @@
 
     get appLoadingClasses() {
       return {
-        'c-app--loading__error': this.hasErrors,
+        'c-app--loading__error': !this.shouldShowWelcomePage && this.isOnline && this.hasErrors,
         'c-app--loading__warning': !this.isOnline,
-        'c-app--loading__config-verify-errors': this.hasConfigVerifyErrors,
+        'c-app--loading__config-verify-errors': !this.shouldShowWelcomePage && this.hasConfigVerifyErrors,
+        'c-app--loading__small-logo': this.shouldShowWelcomePage || this.hasConfigVerifyErrors,
       }
     }
 
@@ -136,8 +141,12 @@
       }
     }
 
-    get showLoading(): boolean {
+    get shouldShowLoading(): boolean {
       return this.loadingProgress < 1 || !this.isOnline || this.hasErrors
+    }
+
+    get shouldShowWelcomePage(): boolean {
+      return this.$store.getters.hasUnknownDefaultConfigError || this.$store.getters.isNewUser
     }
 
     get isOnline(): boolean {
@@ -247,7 +256,7 @@
     bottom: 0;
     left: 0;
     color: var(--color-spindle);
-    background: linear-gradient(to top right, #192532, var(--color-cello)) fixed;
+    background: linear-gradient(to top right, var(--color-background), var(--color-cello)) fixed;
     text-align: center;
     z-index: 50;
     will-change: opacity;
@@ -256,12 +265,16 @@
 
   .c-app--loading__warning {
     --color-logo-background: var(--color-warning);
-    --color-logo-line-start: #3f4b51;
+    --color-logo-line-start: #303D46;
   }
 
   .c-app--loading__error {
     --color-logo-background: var(--color-failed);
-    --color-logo-line-start: #323E55;
+    --color-logo-line-start: #303547;
+  }
+
+  .c-app__welcome-page .c-app--loading {
+    --color-logo-line-start: #1F3137;
   }
 
   .c-app--loading__config-verify-errors {
@@ -284,10 +297,12 @@
     top: 50vh;
     left: 50%;
     width: 80%;
+    max-width: calc(100% - 100px);
     transform: translate(-50%, -50%);
     will-change: transform, opacity, width;
     animation: fadeIn 1s, logoSlideIn 1s;
     transition: transform 750ms, opacity 750ms, width 300ms, top 300ms;
+    z-index: 1;
 
     path {
       will-change: fill;
@@ -336,10 +351,9 @@
     }
   }
 
-  .c-app--loading__config-verify-errors .c-app--logo {
-    top: 120px;
+  .c-app--loading__small-logo .c-app--logo {
+    top: 130px;
     width: 700px;
-    max-width: calc(100% - 100px);
   }
 
   .c-app--loading-errors {
@@ -377,6 +391,7 @@
     transform: translateX(0);
   }
 
+  .c-app__welcome-page .c-app--loading-progress,
   .c-app--loading__config-verify-errors .c-app--loading-progress {
     display: none;
   }
